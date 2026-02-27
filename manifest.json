@@ -1,0 +1,11 @@
+{
+  "background_color": "#ffffff",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "vuduydunghp.github",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "vuduydunghp.github",
+  "start_url": "https://vuduydunghp.github.io/Chip/",
+  "theme_color": "#ffffff"
+}
