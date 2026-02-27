@@ -257,5 +257,10 @@ if (localStorage.getItem("chipTheme") === "dark") {
 
 updateUI();
 </script>
+  <script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/Chip/pwabuilder-sw.js');
+}
+</script>
 </body>
 </html>
