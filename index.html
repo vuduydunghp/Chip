@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Chíp tây</title>
+
+<style>
+:root {
+  --bg: #ffe6f0;
+  --card: #ffffff;
+  --text: #222;
+  --primary: #ffcc00;
+  --edit: #4caf50;
+  --delete: #f44336;
+}
+
+.dark {
+  --bg: #1e1e1e;
+  --card: #2a2a2a;
+  --text: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  user-select: none;
+}
+
+.container {
+  padding: 20px;
+  max-width: 500px;
+  margin: auto;
+}
+
+h1 {
+  text-align: center;
+}
+
+.total {
+  font-size: 22px;
+  font-weight: bold;
+  margin: 15px 0;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  font-size: 18px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+}
+
+button {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 15px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.add-btn {
+  background: var(--primary);
+  width: 100%;
+  margin-top: 10px;
+}
+
+.list {
+  margin-top: 15px;
+}
+
+.item {
+  background: var(--card);
+  padding: 10px;
+  margin-bottom: 8px;
+  border-radius: 10px;
+  animation: fadeIn 0.2s ease;
+}
+
+.item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.time {
+  font-size: 12px;
+  opacity: 0.6;
+  margin-top: 4px;
+}
+
+.actions button {
+  margin-left: 5px;
+  font-size: 12px;
+}
+
+.edit-btn {
+  background: var(--edit);
+  color: white;
+}
+
+.delete-btn {
+  background: var(--delete);
+  color: white;
+}
+
+.reset {
+  position: fixed;
+  bottom: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #888;
+  color: white;
+}
+
+.toggle {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: #666;
+  color: white;
+}
+
+@keyframes fadeIn {
+  from {opacity: 0; transform: translateY(5px);}
+  to {opacity: 1; transform: translateY(0);}
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+  <h1>Chíp tây</h1>
+  <div class="total" id="total">Tổng hôm nay: 0 đ</div>
+
+  <input type="number" id="moneyInput" placeholder="Nhập số (vd: 9 = 900k)">
+  <button class="add-btn" onclick="addMoney()">Thêm</button>
+
+  <div class="list" id="list"></div>
+</div>
+
+<button class="reset" onclick="resetAll()">Reset</button>
+<button class="toggle" onclick="toggleTheme()">🌙</button>
+
+<script>
+let data = JSON.parse(localStorage.getItem("chipTayData")) || [];
+
+function formatMoney(num) {
+  return num.toLocaleString("vi-VN") + " đ";
+}
+
+function getCurrentTime() {
+  const now = new Date();
+  return now.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function save() {
+  localStorage.setItem("chipTayData", JSON.stringify(data));
+}
+
+function updateUI() {
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+  let total = 0;
+
+  data.forEach((item, index) => {
+    total += item.amount;
+
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <div class="item-top">
+        <strong>${formatMoney(item.amount)}</strong>
+        <div class="actions">
+          <button class="edit-btn" onclick="editItem(${index})">Sửa</button>
+          <button class="delete-btn" onclick="deleteItem(${index})">Xóa</button>
+        </div>
+      </div>
+      <div class="time">${item.time}</div>
+    `;
+    list.appendChild(div);
+  });
+
+  document.getElementById("total").innerText =
+    "Tổng hôm nay: " + formatMoney(total);
+}
+
+function addMoney() {
+  const input = document.getElementById("moneyInput");
+  let val = parseInt(input.value);
+  if (!val) return;
+
+  val = val * 100000;
+
+  data.push({
+    amount: val,
+    time: getCurrentTime()
+  });
+
+  save();
+  updateUI();
+  input.value = "";
+}
+
+function editItem(index) {
+  let newVal = prompt("Nhập lại số:", data[index].amount / 100000);
+  if (newVal === null) return;
+  newVal = parseInt(newVal);
+  if (!newVal) return;
+
+  data[index].amount = newVal * 100000;
+  save();
+  updateUI();
+}
+
+function deleteItem(index) {
+  if (confirm("Bạn chắc chắn muốn xóa?")) {
+    data.splice(index, 1);
+    save();
+    updateUI();
+  }
+}
+
+function resetAll() {
+  if (confirm("Reset toàn bộ dữ liệu?")) {
+    data = [];
+    save();
+    updateUI();
+  }
+}
+
+function toggleTheme() {
+  document.body.classList.toggle("dark");
+  localStorage.setItem("chipTheme",
+    document.body.classList.contains("dark") ? "dark" : "light");
+}
+
+document.getElementById("moneyInput")
+  .addEventListener("keypress", function(e) {
+    if (e.key === "Enter") addMoney();
+  });
+
+if (localStorage.getItem("chipTheme") === "dark") {
+  document.body.classList.add("dark");
+}
+
+updateUI();
+</script>
+</body>
+</html>
