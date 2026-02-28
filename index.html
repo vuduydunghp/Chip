@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<link rel="manifest" href="manifest.json">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Chíp tây</title>
@@ -51,6 +50,12 @@ h1 {
   margin: 15px 0;
 }
 
+.tip-total {
+  font-size: 16px;
+  margin-bottom: 10px;
+  opacity: 0.8;
+}
+
 input {
   width: 100%;
   padding: 12px;
@@ -82,7 +87,6 @@ button {
   padding: 10px;
   margin-bottom: 8px;
   border-radius: 10px;
-  animation: fadeIn 0.2s ease;
 }
 
 .item-top {
@@ -121,17 +125,51 @@ button {
   color: white;
 }
 
-.toggle {
+.icon-btn {
   position: fixed;
   top: 10px;
-  right: 10px;
   background: #666;
   color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
 }
 
-@keyframes fadeIn {
-  from {opacity: 0; transform: translateY(5px);}
-  to {opacity: 1; transform: translateY(0);}
+.dark-btn { right: 10px; }
+.tip-btn { right: 60px; }
+.coc-btn { right: 110px; }
+.history-btn { right: 170px; }
+
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.4);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.popup-box {
+  background: var(--card);
+  width: 95%;
+  max-width: 500px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 20px;
+  border-radius: 20px;
+}
+
+.popup h2 {
+  margin-top: 0;
+}
+
+.close-btn {
+  background: #999;
+  margin-top: 10px;
+  width: 100%;
 }
 </style>
 </head>
@@ -139,7 +177,9 @@ button {
 <body>
 <div class="container">
   <h1>Chíp tây</h1>
+
   <div class="total" id="total">Tổng hôm nay: 0 đ</div>
+  <div class="tip-total" id="tipTotal">Tip: 0 đ</div>
 
   <input type="number" id="moneyInput" placeholder="Nhập số (vd: 9 = 900k)">
   <button class="add-btn" onclick="addMoney()">Thêm</button>
@@ -148,10 +188,46 @@ button {
 </div>
 
 <button class="reset" onclick="resetAll()">Reset</button>
-<button class="toggle" onclick="toggleTheme()">🌙</button>
+
+<button class="icon-btn history-btn" onclick="openHistory()">📅</button>
+<button class="icon-btn coc-btn" onclick="openCoc()">💰</button>
+<button class="icon-btn tip-btn" onclick="openTip()">💸</button>
+<button class="icon-btn dark-btn" onclick="toggleTheme()">🌙</button>
+
+<!-- TIP POPUP -->
+<div class="popup-overlay" id="tipPopup">
+  <div class="popup-box">
+  <h2>Tip</h2>
+  <div class="total" id="tipPopupTotal">Tổng Tip: 0 đ</div>
+  <input type="number" id="tipInput" placeholder="Nhập số">
+  <button class="add-btn" onclick="addTip()">Thêm</button>
+  <div class="list" id="tipList"></div>
+  <button class="close-btn" onclick="closeTip()">Đóng</button>
+</div></div>
+
+<!-- COC POPUP -->
+<div class="popup-overlay" id="cocPopup">
+  <div class="popup-box">
+  <h2>Cọc</h2>
+  <div class="total" id="cocTotal">Tổng Cọc: 0 đ</div>
+  <input type="number" id="cocInput" placeholder="Nhập số">
+  <button class="add-btn" onclick="addCoc()">Thêm</button>
+  <button class="close-btn" onclick="closeCoc()">Đóng</button>
+</div></div>
+
+<!-- HISTORY POPUP -->
+<div class="popup-overlay" id="historyPopup">
+  <div class="popup-box">
+  <h2>Lịch sử</h2>
+  <div id="historyContent"></div>
+  <button class="close-btn" onclick="closeHistory()">Đóng</button>
+</div></div>
 
 <script>
 let data = JSON.parse(localStorage.getItem("chipTayData")) || [];
+let tipData = JSON.parse(localStorage.getItem("chipTipData")) || [];
+let cocTotal = parseInt(localStorage.getItem("chipCocData")) || 0;
+let historyData = JSON.parse(localStorage.getItem("chipHistoryData")) || {};
 
 function formatMoney(num) {
   return num.toLocaleString("vi-VN") + " đ";
@@ -159,14 +235,14 @@ function formatMoney(num) {
 
 function getCurrentTime() {
   const now = new Date();
-  return now.toLocaleTimeString("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit"
-  });
+  return now.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
 }
 
-function save() {
+function saveAll() {
   localStorage.setItem("chipTayData", JSON.stringify(data));
+  localStorage.setItem("chipTipData", JSON.stringify(tipData));
+  localStorage.setItem("chipCocData", cocTotal);
+  localStorage.setItem("chipHistoryData", JSON.stringify(historyData));
 }
 
 function updateUI() {
@@ -176,7 +252,6 @@ function updateUI() {
 
   data.forEach((item, index) => {
     total += item.amount;
-
     const div = document.createElement("div");
     div.className = "item";
     div.innerHTML = `
@@ -194,21 +269,23 @@ function updateUI() {
 
   document.getElementById("total").innerText =
     "Tổng hôm nay: " + formatMoney(total);
+
+  let tipTotal = tipData.reduce((a,b)=>a+b.amount,0);
+  document.getElementById("tipTotal").innerText =
+    "Tip: " + formatMoney(tipTotal);
+
+  updateTipPopup();
+  updateCocPopup();
 }
 
 function addMoney() {
   const input = document.getElementById("moneyInput");
   let val = parseInt(input.value);
   if (!val) return;
-
   val = val * 100000;
 
-  data.push({
-    amount: val,
-    time: getCurrentTime()
-  });
-
-  save();
+  data.push({ amount: val, time: getCurrentTime() });
+  saveAll();
   updateUI();
   input.value = "";
 }
@@ -218,27 +295,120 @@ function editItem(index) {
   if (newVal === null) return;
   newVal = parseInt(newVal);
   if (!newVal) return;
-
   data[index].amount = newVal * 100000;
-  save();
+  saveAll();
   updateUI();
 }
 
 function deleteItem(index) {
   if (confirm("Bạn chắc chắn muốn xóa?")) {
     data.splice(index, 1);
-    save();
+    saveAll();
     updateUI();
   }
 }
 
-function resetAll() {
-  if (confirm("Reset toàn bộ dữ liệu?")) {
-    data = [];
-    save();
-    updateUI();
-  }
+function addTip() {
+  let input = document.getElementById("tipInput");
+  let val = parseInt(input.value);
+  if (!val) return;
+  val *= 100000;
+  tipData.push({ amount: val, time: getCurrentTime() });
+  saveAll();
+  updateUI();
+  input.value = "";
 }
+
+function updateTipPopup() {
+  let list = document.getElementById("tipList");
+  list.innerHTML = "";
+  let total = 0;
+  tipData.forEach(t=>{
+    total+=t.amount;
+    let div=document.createElement("div");
+    div.className="item";
+    div.innerHTML=`<strong>${formatMoney(t.amount)}</strong>
+                   <div class="time">${t.time}</div>`;
+    list.appendChild(div);
+  });
+  document.getElementById("tipPopupTotal").innerText =
+    "Tổng Tip: " + formatMoney(total);
+}
+
+function addCoc() {
+  let input = document.getElementById("cocInput");
+  let val = parseInt(input.value);
+  if (!val) return;
+  cocTotal += val * 100000;
+  saveAll();
+  updateUI();
+  input.value="";
+}
+
+function updateCocPopup() {
+  document.getElementById("cocTotal").innerText =
+    "Tổng Cọc: " + formatMoney(cocTotal);
+}
+
+function resetAll() {
+  if (!confirm("Reset toàn bộ dữ liệu?")) return;
+
+  let incomeTotal = data.reduce((a,b)=>a+b.amount,0);
+  let tipTotal = tipData.reduce((a,b)=>a+b.amount,0);
+
+  let today = new Date();
+  today.setDate(today.getDate()-1);
+  let key = today.toISOString().split("T")[0];
+
+  historyData[key] = {
+    income: incomeTotal,
+    tip: tipTotal
+  };
+
+  data = [];
+  tipData = [];
+  saveAll();
+  updateUI();
+}
+
+function openTip(){ document.getElementById("tipPopup").style.display="block"; }
+function closeTip(){ document.getElementById("tipPopup").style.display="none"; }
+
+function openCoc(){ document.getElementById("cocPopup").style.display="block"; }
+function closeCoc(){ document.getElementById("cocPopup").style.display="none"; }
+
+function openHistory(){
+  let content=document.getElementById("historyContent");
+  content.innerHTML="";
+  let grouped={};
+
+  for(let date in historyData){
+    let month=date.slice(0,7);
+    if(!grouped[month]) grouped[month]={income:0,tip:0,days:[]};
+    grouped[month].income+=historyData[date].income;
+    grouped[month].tip+=historyData[date].tip;
+    grouped[month].days.push({date,...historyData[date]});
+  }
+
+  for(let month in grouped){
+    let div=document.createElement("div");
+    div.className="item";
+    div.innerHTML=`<strong>${month}</strong>
+      <div>Thu nhập: ${formatMoney(grouped[month].income)}</div>
+      <div>Tip: ${formatMoney(grouped[month].tip)}</div>`;
+    content.appendChild(div);
+
+    grouped[month].days.forEach(d=>{
+      let day=document.createElement("div");
+      day.style.padding="8px 15px";
+      day.innerHTML=`${d.date} | Thu nhập: ${formatMoney(d.income)} | Tip: ${formatMoney(d.tip)}`;
+      content.appendChild(day);
+    });
+  }
+
+  document.getElementById("historyPopup").style.display="block";
+}
+function closeHistory(){ document.getElementById("historyPopup").style.display="none"; }
 
 function toggleTheme() {
   document.body.classList.toggle("dark");
@@ -247,20 +417,17 @@ function toggleTheme() {
 }
 
 document.getElementById("moneyInput")
-  .addEventListener("keypress", function(e) {
-    if (e.key === "Enter") addMoney();
-  });
+  .addEventListener("keypress", e=>{ if(e.key==="Enter") addMoney(); });
+document.getElementById("tipInput")
+  .addEventListener("keypress", e=>{ if(e.key==="Enter") addTip(); });
+document.getElementById("cocInput")
+  .addEventListener("keypress", e=>{ if(e.key==="Enter") addCoc(); });
 
 if (localStorage.getItem("chipTheme") === "dark") {
   document.body.classList.add("dark");
 }
 
 updateUI();
-</script>
-  <script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/Chip/pwabuilder-sw.js');
-}
 </script>
 </body>
 </html>
