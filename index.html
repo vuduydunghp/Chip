@@ -171,6 +171,15 @@ button {
   margin-top: 10px;
   width: 100%;
 }
+.corner-image {
+  position: fixed;
+  bottom: 10px;   /* cách đáy 10px */
+  right: 10px;    /* cách phải 10px */
+  width: 80px;    /* chỉnh kích thước */
+  opacity: 0.8;   /* độ mờ nhẹ */
+  z-index: 1;     /* nằm dưới popup */
+  pointer-events: none; /* không che nút bấm */
+}
 </style>
 </head>
 
@@ -429,5 +438,7 @@ if (localStorage.getItem("chipTheme") === "dark") {
 
 updateUI();
 </script>
+<img src="Capture.PNG" class="corner-image">
 </body>
 </html>
+
